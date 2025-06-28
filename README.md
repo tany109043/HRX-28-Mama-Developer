@@ -1,6 +1,6 @@
 # HRX‑28 Mama Developer — Learning Companion Bookmarklet
 
-> A single‑click bookmarklet that injects AI‑powered study aides, mood tracking, quizzes and fun incentives directly onto any Udemy course page.
+> A single‑click bookmarklet that injects AI‑powered study aides, mood tracking, quizzes and fun incentives directly onto any Udemy course page.<br>
 **Note:-** Currently working on Udemy Courses Only.
 ---
 
