@@ -23,23 +23,28 @@
 ## 🔧 Quick Start
 
 1. **Clone or download** this repo (or simply reference the hosted file on jsDelivr).
-2. **Start the sentiment‑analysis backend** (Python ≥ 3.9):
+2. **Install dependencies** for sentiment detection backend:
 
    ```bash
-   uvicorn api:app --host 0.0.0.0 --port 8000
+   pip install -r requirements.txt
+   ```
+3. **Start the sentiment‑analysis backend** (Python ≥ 3.9):
+
+   ```bash
+   uvicorn api:app --reload --port 8000
    ```
 
    This exposes `/start`, `/stop` and `/latest` endpoints that the bookmarklet polls.
-3. **Create the bookmarklet**
+4. **Create the bookmarklet**
 
-   * Add a new bookmark in your browser. (Click on Add Page)
+   * Add a new bookmark in your browser.
    * Set its *URL / Location* to **one long line**:
 
      ```javascript
      javascript:(async()=>{await import('https://cdn.jsdelivr.net/gh/tany109043/HRX-28-Mama-Developer@main/script.js?t='+Date.now())})();
      ```
    * Give it a name like **Udemy Buddy** and save.
-4. **Open any Udemy course** page, click the floating green ⬤ button (bottom‑right) and explore the panel.
+5. **Open any Udemy course** page, click the floating green ⬤ button (bottom‑right) and explore the panel.
 
 ---
 
@@ -58,10 +63,36 @@
 ## 📂 Project Structure
 
 ```
-├─ script.js                # main bookmarklet payload (loads dynamically)
-├─ student_affect_monitor.py# FastAPI backend for affect detection
+├─ script.js                 # main bookmarklet payload (loads dynamically)
+├─ api.py                   # FastAPI backend to manage sentiment process
+├─ student_affect_monitor.py# Emotion detection using DeepFace and MediaPipe
+├─ requirements.txt         # Python dependencies
 ├─ README.md                # this file
 └─ …
+```
+
+---
+
+## 📦 Requirements (for backend)
+
+Create a `requirements.txt` with the following:
+
+```
+fastapi
+uvicorn
+python-multipart
+pynput
+opencv-python
+mediapipe
+deepface
+scipy
+tk
+```
+
+Install all dependencies with:
+
+```bash
+pip install -r requirements.txt
 ```
 
 ---
