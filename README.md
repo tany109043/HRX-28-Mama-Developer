@@ -8,21 +8,21 @@
 
 | Category              | What it does                                                                                                                      |
 | --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Sentiment Monitor | Real‑time webcam‑based affect detection via a FastAPI backend; console table updates every second and pauses with <kbd>Esc</kbd>. |
-| Course Analyzer   | Uses Cohere Llama to summarise modules, highlight drawbacks and outline learning outcomes in <180 words.                          |
-| Module Checklist  | Auto‑detects section titles; tick completed items and persist progress in `localStorage`.                                         |
-| Project Ideas     | Generates three DIY projects tailored to your selected modules.                                                                   |
-| Quiz Me           | Builds 5 MCQs (2 easy / 2 medium / 1 hard) for chosen modules, auto‑grades and awards tokens.                                 |
-| Daily Question    | One timed logical/quantitative aptitude MCQ per day; +10 tokens on a correct answer.                                              |
-| Meme Generator    | Spend 1 token to unlock a fresh Imgflip meme with AI‑written captions on the course topic.                                        |
-| GitHub Evaluator  | Paste a repo URL and receive constructive feedback plus a 1‑10 rating.                                                            |
-| Gamification      | Earn tokens via quizzes & daily question, spend them on memes; token badge always visible.                                        |
+| **Sentiment Monitor** | Real‑time webcam‑based affect detection via a FastAPI backend; console table updates every second and pauses with <kbd>Esc</kbd>. |
+| **Course Analyzer**   | Uses Cohere Llama to summarise modules, highlight drawbacks and outline learning outcomes in <180 words.                          |
+| **Module Checklist**  | Auto‑detects section titles; tick completed items and persist progress in `localStorage`.                                         |
+| **Project Ideas**     | Generates three DIY projects tailored to your selected modules.                                                                   |
+| **Quiz Me**           | Builds 5 MCQs (2 easy / 2 medium / 1 hard) for chosen modules, auto‑grades and awards **tokens**.                                 |
+| **Daily Question**    | One timed logical/quantitative aptitude MCQ per day; +10 tokens on a correct answer.                                              |
+| **Meme Generator**    | Spend 1 token to unlock a fresh Imgflip meme with AI‑written captions on the course topic.                                        |
+| **GitHub Evaluator**  | Paste a repo URL and receive constructive feedback plus a 1‑10 rating.                                                            |
+| **Gamification**      | Earn tokens via quizzes & daily question, spend them on memes; token badge always visible.                                        |
 
 ---
 
 ## 🔧 Quick Start
 
-1. *Clone or download* this repo (or simply reference the hosted file on jsDelivr).
+1. **Clone or download** this repo (or simply reference the hosted file on jsDelivr).
 2. **Start the sentiment‑analysis backend** (Python ≥ 3.9):
 
    ```bash
