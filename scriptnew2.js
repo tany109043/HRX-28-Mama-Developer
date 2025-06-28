@@ -153,6 +153,7 @@
     askBtn.style.cssText = 'padding:8px 16px;background:#007BFF;color:#fff;border:none;border-radius:6px;cursor:pointer;';
 
     // 🎭 Meme button (circular, disabled if no tokens)
+    const topic = document.querySelector("h1").textContent.trim();
     const memeBtn = document.createElement('button');
     memeBtn.id = 'udemyMemeBtn';
     memeBtn.textContent = '🎭';
@@ -222,6 +223,150 @@
         const data = await res.json();
         return data.generations?.[0]?.text || '⚠️ No response';
     };
+
+    const cohereQueryy = async (prompt, max = 450, temp = 0.6) => {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: 'command-r-plus', prompt, max_tokens: max, temperature: temp })
+        });
+        const data = await res.json();
+        return data.generations?.[0]?.text || '⚠️ No response';
+    };
+    /******************* Transcript Fetcher **************/
+    async function fetchTranscript() {
+        // Preferred selector supplied by user
+        const attrSel = '[data-purpose="transcript-panel"] span';
+        let spans = Array.from(document.querySelectorAll(attrSel));
+        if (spans.length) return spans.map(s => s.textContent.trim()).join(' ');
+
+        // Fallback to cue classes
+        const cueSel = '.transcript--highlight-cue--3T2w2,.transcript--transcript-cue--1pkkC,.ud-transcript-cue';
+        for (let i = 0; i < 4; i++) {
+            spans = Array.from(document.querySelectorAll(cueSel));
+            if (spans.length) return spans.map(s => s.innerText.trim()).join(' ');
+            await new Promise(r => setTimeout(r, 300));
+        }
+        return '';
+    }
+
+    /******************* UI Helpers **********************/
+    // Floating Helper button
+    const helperBtn = document.createElement('button');
+    helperBtn.id = 'udemyHelperBtn';
+    helperBtn.textContent = '🛠';
+    helperBtn.title = 'Open Helper';
+    helperBtn.style.cssText = [
+        'margin-left:10px',               // adds spacing from dqBtn
+        'padding:6px 14px',
+        'background:#673ab7',
+        'color:#fff',
+        'border:none',
+        'border-radius:6px',
+        'cursor:pointer',
+        'font-size:13px'
+    ].join(';');
+
+    // Pop‑up mini panel containing the two inner buttons
+    const mini = document.createElement('div');
+    mini.style.cssText = [
+        'display:none',
+        'position:absolute',                 // absolute for dynamic positioning
+        'width:260px',
+        'padding:12px',
+        'background:#fff',
+        'border:2px solid #888',
+        'border-radius:10px',
+        'box-shadow:0 6px 18px rgba(0,0,0,.35)',
+        'z-index:10000',
+        'font-family:sans-serif'
+    ].join(';');
+    const makeInnerBtn = (label, bg) => {
+        const b = document.createElement('button');
+        b.textContent = label;
+        b.style.cssText = `width:100%;margin:6px 0;padding:8px;border:none;border-radius:6px;font-size:14px;color:#fff;background:${bg};cursor:pointer;`;
+        mini.appendChild(b);
+        return b;
+    };
+
+    const notesInner = makeInnerBtn('📑 Generate Notes', '#009688');
+    const exampleInner = makeInnerBtn('🌍 Real‑World Analogy', '#8e24aa');
+
+    // Toggle mini panel
+    helperBtn.onclick = () => {
+        mini.style.display = mini.style.display === 'none' ? 'block' : 'none';
+    };
+
+    /******************* Output Window Factory ***********/
+    function createWindow(title, enablePDF = false) {
+        const wrapp = document.createElement('div');
+        wrapp.style = 'position:fixed;bottom:160px;right:20px;width:320px;max-height:320px;overflow:auto;padding:12px;background:#fff;border:2px solid #666;border-radius:10px;box-shadow:0 4px 14px rgba(0,0,0,.3);z-index:10001;';
+        const close = document.createElement('button');
+        close.textContent = '✖';
+        close.style = 'position:absolute;top:6px;right:8px;border:none;background:none;font-size:16px;cursor:pointer;color:#555;';
+        close.onclick = () => wrapp.remove();
+        const h = document.createElement('h4'); h.textContent = title; h.style = 'margin:0 0 8px;font-size:15px;color:#333;';
+        const ta = document.createElement('textarea'); ta.style = 'width:100%;height:200px;padding:6px;font-size:13px;resize:none;';
+        wrapp.append(close, h, ta);
+        if (enablePDF) {
+            const pdfBtn = document.createElement('button');
+            pdfBtn.textContent = '⬇️ PDF';
+            pdfBtn.style = 'margin-top:6px;padding:6px 12px;border:none;border-radius:4px;background:#2196f3;color:#fff;cursor:pointer;';
+            pdfBtn.onclick = async () => {
+                if (!window.html2pdf) { await new Promise(r => { const s = document.createElement('script'); s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'; s.onload = r; document.body.appendChild(s); }); }
+                html2pdf().from(ta.value.replace(/\n/g, '<br>')).set({ filename: `${title.replace(/\s+/g, '_')}.pdf`, margin: 10 }).save();
+            };
+            wrapp.appendChild(pdfBtn);
+        }
+        document.body.appendChild(wrapp);
+        return ta;
+    }
+
+    /******************* Prompts **************************/
+    const notesPrompt = transcript => `You are an expert note-taker for online lectures. Based on the following transcript, perform these tasks:
+
+1. Summarize the key concepts in *short, effective bullet points*. Use simple language.
+2. Highlight important definitions or formulas clearly.
+3. Create a *flowchart-style explanation* for any process, step-by-step method, or hierarchy mentioned. Use clear arrows (→) or bullet indentation to show structure.
+
+Make sure:
+- The notes are concise and helpful for revision.
+- The flowcharts are readable in plain text.
+- All unnecessary details are removed.
+
+Transcript:
+""" 
+${transcript}
+"""
+`;
+
+    const analogyPrompt = transcript => `You are an expert teacher who simplifies technical ideas with analogies. From the transcript below, identify the primary concept, then craft **one bold one‑liner analogy** followed by a 2‑line explanation.\nTranscript:\n"""\n${transcript}\n"""`;
+
+    /******************* Inner Button Logic ***************/
+    notesInner.onclick = async () => {
+        notesInner.textContent = '⏳ Notes…';
+        const tx = await fetchTranscript();
+        if (!tx) { alert('❌ Transcript not found'); return notesInner.textContent = '📑 Generate Notes'; }
+        const out = await cohereQueryy(notesPrompt(tx), 550, 0.55);
+        const ta = createWindow('Smart Notes', true);
+        ta.value = out;
+        notesInner.textContent = '📑 Generate Notes';
+    };
+
+    exampleInner.onclick = async () => {
+        exampleInner.textContent = '⏳ Example…';
+        const tx = await fetchTranscript();
+        if (!tx) { alert('❌ Transcript not found'); return exampleInner.textContent = '🌍 Real‑World Analogy'; }
+        const out = await cohereQueryy(analogyPrompt(tx), 180, 0.7);
+        const ta = createWindow('Real‑World Analogy');
+        ta.value = out;
+        exampleInner.textContent = '🌍 Real‑World Analogy';
+    };
+    // Attach elements to page
+
+    document.body.appendChild(mini);
+    dqBtn.style.cssText = 'padding:6px 14px;background:#3f51b5;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:13px;';
+    headerBar.appendChild(helperBtn);
 
     /*************************************************
      *  🔄 MAIN BUTTON CLICK HANDLER
@@ -621,64 +766,143 @@ Format strictly:
         if (tokenPoints <= 0) return alert('❌ Not enough meme tokens!');
         memeBtn.disabled = true;
         memeBtn.textContent = '…';
+        const templateEmotions = {
+            "181913649": "before_after",
+            "93895088": "before_after",
+            "124055727": "before_after",
+            "4087833": "before_after",
+            "247375501": "before_after",
+            "123999232": "before_after",
+            "112126428": "comparison",
+            "87743020": "comparison",
+            "100777631": "comparison",
+            "217743513": "comparison",
+            "228024850": "comparison",
+            "129242436": "reaction",
+            "131087935": "reaction",
+            "148909805": "reaction",
+            "131940431": "reaction"
+        };
+
+        const getTemplateByCategory = (category) => {
+            const entries = Object.entries(templateEmotions).filter(([_, cat]) => cat === category);
+            if (!entries.length) return null;
+            const randomEntry = entries[Math.floor(Math.random() * entries.length)];
+            return randomEntry[0]; // template ID
+        };
+        const prompt = `
+You're a meme generator. Give me two lines that are related to each other in a funny way so I could make a meme out of them.
+There should be a clear relationship between the two lines.
+
+Use this JSON format:
+{
+  "top": "<top line>",
+  "bottom": "<bottom line>",
+  "category": "<one of: before_after, comparison, reaction>"
+}
+
+Generate lines related to the topic: "${topic}"
+Only output the JSON — no extra text.
+`;
+
+        const resp = await fetch("https://api.cohere.ai/v1/generate", {
+            method: "POST",
+            headers: {
+                "Authorization": "Bearer zXH8KUSA3ncfZcxvIAZx5boAlGlTirN6LJmp706Q",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ model: "command", prompt, max_tokens: 100, temperature: 0.9 })
+        });
+
+        const text = (await resp.json()).generations?.[0]?.text || "";
+        let parsed;
+
         try {
-            const topic = document.querySelector('h1')?.innerText.trim() || 'coding';
-            const prompt = `You are a meme caption writer. Make a funny meme about: "${topic}".\nFormat:\nTop: <text>\nBottom: <text>`;
-            const { generations: [{ text }] } = await (await fetch(endpoint, { method: 'POST', headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ model: 'command', prompt, max_tokens: 50, temperature: 0.9 }) })).json();
-            const lines = text.split('\n');
-            const top = lines.find(l => l.startsWith('Top:'))?.replace('Top:', '').trim() || 'Debugging for hours';
-            const bottom = lines.find(l => l.startsWith('Bottom:'))?.replace('Bottom:', '').trim() || 'Then it was a semicolon 😭';
-
-            const form = new URLSearchParams({ template_id: randomTemplate(), username: 'SHANTNUTALOKAR', password: 'Sahil@9043', text0: top, text1: bottom });
-            const imgRes = await (await fetch('https://api.imgflip.com/caption_image', { method: 'POST', body: form })).json();
-            if (!imgRes.success) return alert('❌ Imgflip error: ' + imgRes.error_message);
-
-            const pop = document.createElement('div');
-            pop.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:10002;background:#fff;border:2px solid #000;border-radius:10px;padding:12px;box-shadow:2px 2px 10px rgba(0,0,0,.35);max-width:280px;text-align:center;font-family:sans-serif;';
-            pop.innerHTML = `<strong>🎉 Meme Unlocked!</strong><br><img src="${imgRes.data.url}" style="max-width:100%;border-radius:6px;margin-top:10px"/><br><button style="margin-top:8px;padding:4px 10px;border:none;background:#f44336;color:#fff;border-radius:4px;cursor:pointer;">Close</button>`;
-            pop.querySelector('button').onclick = () => pop.remove();
-            document.body.appendChild(pop);
-            addTokens(-1);
-        } catch (err) {
-            alert('❌ Meme error – see console.');
-            console.error(err);
+            parsed = JSON.parse(text);
+        } catch (e) {
+            alert("⚠️ Failed to understand meme lines. Try again.");
+            return;
         } finally {
             memeBtn.textContent = '🎭';
             memeBtn.disabled = false;
             memeBtn.appendChild(window.tokenBadge);
         }
-    };
+        const { top, bottom, category } = parsed;
+        const templateId = getTemplateByCategory(category);
 
-    /*************************************************
-     *  🗓️ DAILY QUESTION HANDLER (logic reused)
-     *************************************************/
-    dqBtn.onclick = async () => {
-        const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
-        const qKey = 'dailyQ-data';
-        const dKey = 'dailyQ-date';
-        const aKey = 'dailyQ-done';
-
-        // ✅ Disable btn if already done
-        if (localStorage.getItem(aKey) === today) {
-            dqBtn.disabled = true;
-            dqBtn.style.background = '#ccc';
-            dqBtn.textContent = '✅ Attempted';
+        if (!templateId) {
+            alert("❌ No suitable meme template found for category: " + category);
             return;
         }
 
-        // helper to render the stored or freshly fetched question
-        const renderQuestion = (qBlock) => {
-            // build overlay (1-per-session)
-            let dqOver = document.getElementById('dailyQOverlay');
-            if (!dqOver) {
-                dqOver = document.createElement('div');
-                dqOver.id = 'dailyQOverlay';
-                dqOver.style.cssText =
-                    'display:flex;flex-direction:column;align-items:center;position:fixed;top:10%;left:50%;' +
-                    'transform:translateX(-50%);width:500px;max-width:90%;padding:22px;background:#fff;' +
-                    'border:5px solid #3f51b5;border-radius:14px;z-index:10000;box-shadow:0 10px 25px rgba(0,0,0,.35);' +
-                    'font-family:sans-serif;';
-                dqOver.innerHTML = `
+        const form = new URLSearchParams();
+        form.append("template_id", templateId);
+        form.append("username", "SHANTNUTALOKAR");
+        form.append("password", "Sahil@9043");
+        form.append("text0", top);
+        form.append("text1", bottom);
+
+        const imgRes = await fetch("https://api.imgflip.com/caption_image", {
+            method: "POST",
+            body: form
+        });
+        const memeJson = await imgRes.json();
+
+        if (!memeJson.success) return alert("❌ Imgflip error: " + memeJson.error_message);
+
+        // Display meme popup (same as before)
+        const pop = document.createElement("div");
+        pop.style.cssText = `
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10002;
+  background: #fff;
+  border: 2px solid #000;
+  border-radius: 10px;
+  padding: 12px;
+  box-shadow: 2px 2px 10px rgba(0,0,0,.35);
+  max-width: 280px;
+  text-align: center;
+  font-family: sans-serif;
+`;
+        pop.innerHTML = `<strong>🎉 Meme Unlocked!</strong><br><img src="${memeJson.data.url}" style="max-width:100%;border-radius:6px;margin-top:10px"/><br><button style="margin-top:8px;padding:4px 10px;border:none;background:#f44336;color:#fff;border-radius:4px;cursor:pointer;">Close</button>`;
+        pop.querySelector("button").onclick = () => pop.remove();
+        document.body.appendChild(pop);
+        addTokens(-5);
+    };
+
+
+/*************************************************
+ *  🗓️ DAILY QUESTION HANDLER (logic reused)
+ *************************************************/
+dqBtn.onclick = async () => {
+    const today = new Date().toISOString().slice(0, 10); // "YYYY-MM-DD"
+    const qKey = 'dailyQ-data';
+    const dKey = 'dailyQ-date';
+    const aKey = 'dailyQ-done';
+
+    // ✅ Disable btn if already done
+    if (localStorage.getItem(aKey) === today) {
+        dqBtn.disabled = true;
+        dqBtn.style.background = '#ccc';
+        dqBtn.textContent = '✅ Attempted';
+        return;
+    }
+
+    // helper to render the stored or freshly fetched question
+    const renderQuestion = (qBlock) => {
+        // build overlay (1-per-session)
+        let dqOver = document.getElementById('dailyQOverlay');
+        if (!dqOver) {
+            dqOver = document.createElement('div');
+            dqOver.id = 'dailyQOverlay';
+            dqOver.style.cssText =
+                'display:flex;flex-direction:column;align-items:center;position:fixed;top:10%;left:50%;' +
+                'transform:translateX(-50%);width:500px;max-width:90%;padding:22px;background:#fff;' +
+                'border:5px solid #3f51b5;border-radius:14px;z-index:10000;box-shadow:0 10px 25px rgba(0,0,0,.35);' +
+                'font-family:sans-serif;';
+            dqOver.innerHTML = `
                 <button style="position:absolute;top:8px;right:12px;font-size:16px;border:none;background:#f44336;
                         color:white;padding:4px 10px;border-radius:4px;cursor:pointer;"
                         onclick="this.parentElement.remove()">✖</button>
@@ -689,81 +913,81 @@ Format strictly:
                         border:none;border-radius:5px;cursor:pointer;">Submit</button>
                 <div id="dqResult" style="margin-top:14px;font-weight:bold;text-align:center;"></div>
             `;
-                document.body.appendChild(dqOver);
-            }
-
-            // fill form
-            const form = dqOver.querySelector('#dqForm');
-            form.innerHTML = '';
-            const { question, options } = qBlock;
-            const correctIdx = options.findIndex(o => o.isCorrect);
-
-            const qEl = document.createElement('div');
-            qEl.style.fontWeight = 'bold';
-            qEl.textContent = question;
-            form.appendChild(qEl);
-
-            options.forEach((opt, i) => {
-                const id = `dqo${i}`;
-                const wrap = document.createElement('label');
-                wrap.style.cssText =
-                    'display:block;margin:6px 0;padding:6px 9px;border-radius:5px;border:1px solid #ccc;cursor:pointer;';
-                wrap.innerHTML = `<input type="radio" name="dq" id="${id}" value="${i}" style="margin-right:6px;"> ${opt.text}`;
-                form.appendChild(wrap);
-            });
-
-            let timeLeft = 120;
-            const timerBox = dqOver.querySelector('#dqTimer');
-            timerBox.textContent = `⏳ Time left: 2:00`;
-            const tick = setInterval(() => {
-                --timeLeft;
-                const min = Math.floor(timeLeft / 60).toString();
-                const sec = (timeLeft % 60).toString().padStart(2, '0');
-                timerBox.textContent = `⏳ Time left: ${min}:${sec}`;
-                if (timeLeft <= 0) {
-                    clearInterval(tick);
-                    dqOver.querySelector('#dqSubmit').click();
-                }
-            }, 1000);
-
-            dqOver.querySelector('#dqSubmit').onclick = () => {
-                clearInterval(tick);
-                const chosen = form.querySelector('input[name="dq"]:checked');
-                const resBox = dqOver.querySelector('#dqResult');
-                if (!chosen) {
-                    resBox.textContent = '❗ No option selected!';
-                    return;
-                }
-                const idx = Number(chosen.value);
-                if (idx === correctIdx) {
-                    resBox.textContent = '✅ Correct!';
-                    resBox.style.color = '#2e7d32';
-                    addTokens(10); // ✅ reward tokens
-                } else {
-                    resBox.textContent = `❌ Wrong. Correct answer: ${options[correctIdx].text}`;
-                    resBox.style.color = '#c62828';
-                }
-                dqOver.querySelectorAll('input').forEach(inp => inp.disabled = true);
-                dqOver.querySelector('#dqSubmit').disabled = true;
-
-                // ✅ Mark as attempted
-                localStorage.setItem(aKey, today);
-                dqBtn.disabled = true;
-                dqBtn.style.background = '#ccc';
-                dqBtn.textContent = '✅ Attempted';
-            };
-        };
-
-        if (localStorage.getItem(dKey) === today) {
-            const stored = JSON.parse(localStorage.getItem(qKey) || '{}');
-            return renderQuestion(stored);
+            document.body.appendChild(dqOver);
         }
 
-        try {
-            dqBtn.textContent = '⏳ Creating…';
-            dqBtn.disabled = true;
+        // fill form
+        const form = dqOver.querySelector('#dqForm');
+        form.innerHTML = '';
+        const { question, options } = qBlock;
+        const correctIdx = options.findIndex(o => o.isCorrect);
 
-            const prompt = `
+        const qEl = document.createElement('div');
+        qEl.style.fontWeight = 'bold';
+        qEl.textContent = question;
+        form.appendChild(qEl);
+
+        options.forEach((opt, i) => {
+            const id = `dqo${i}`;
+            const wrap = document.createElement('label');
+            wrap.style.cssText =
+                'display:block;margin:6px 0;padding:6px 9px;border-radius:5px;border:1px solid #ccc;cursor:pointer;';
+            wrap.innerHTML = `<input type="radio" name="dq" id="${id}" value="${i}" style="margin-right:6px;"> ${opt.text}`;
+            form.appendChild(wrap);
+        });
+
+        let timeLeft = 120;
+        const timerBox = dqOver.querySelector('#dqTimer');
+        timerBox.textContent = `⏳ Time left: 2:00`;
+        const tick = setInterval(() => {
+            --timeLeft;
+            const min = Math.floor(timeLeft / 60).toString();
+            const sec = (timeLeft % 60).toString().padStart(2, '0');
+            timerBox.textContent = `⏳ Time left: ${min}:${sec}`;
+            if (timeLeft <= 0) {
+                clearInterval(tick);
+                dqOver.querySelector('#dqSubmit').click();
+            }
+        }, 1000);
+
+        dqOver.querySelector('#dqSubmit').onclick = () => {
+            clearInterval(tick);
+            const chosen = form.querySelector('input[name="dq"]:checked');
+            const resBox = dqOver.querySelector('#dqResult');
+            if (!chosen) {
+                resBox.textContent = '❗ No option selected!';
+                return;
+            }
+            const idx = Number(chosen.value);
+            if (idx === correctIdx) {
+                resBox.textContent = '✅ Correct!';
+                resBox.style.color = '#2e7d32';
+                addTokens(10); // ✅ reward tokens
+            } else {
+                resBox.textContent = `❌ Wrong. Correct answer: ${options[correctIdx].text}`;
+                resBox.style.color = '#c62828';
+            }
+            dqOver.querySelectorAll('input').forEach(inp => inp.disabled = true);
+            dqOver.querySelector('#dqSubmit').disabled = true;
+
+            // ✅ Mark as attempted
+            localStorage.setItem(aKey, today);
+            dqBtn.disabled = true;
+            dqBtn.style.background = '#ccc';
+            dqBtn.textContent = '✅ Attempted';
+        };
+    };
+
+    if (localStorage.getItem(dKey) === today) {
+        const stored = JSON.parse(localStorage.getItem(qKey) || '{}');
+        return renderQuestion(stored);
+    }
+
+    try {
+        dqBtn.textContent = '⏳ Creating…';
+        dqBtn.disabled = true;
+
+        const prompt = `
 Generate EXACTLY one aptitude multiple-choice question in the domain of logical reasoning or quantitative aptitude.
 
 • Return in this format (no extra commentary):
@@ -777,40 +1001,40 @@ Answer: <capital letter of correct option>
 Use real aptitude style, medium difficulty.
         `.trim();
 
-            const raw = await cohereQuery(prompt, 180);
-            dqBtn.textContent = '🗓️ Daily Question';
-            dqBtn.disabled = false;
+        const raw = await cohereQuery(prompt, 180);
+        dqBtn.textContent = '🗓️ Daily Question';
+        dqBtn.disabled = false;
 
-            const qMatch = raw.match(/^Q\)?\s*(.*)$/im);
-            const oMatch = raw.match(/^[A-D]\).*/gim);
-            const aMatch = raw.match(/Answer:\s*([A-D])/i);
-            if (!qMatch || !oMatch || oMatch.length !== 4 || !aMatch) {
-                return alert('⚠️ Could not parse question from Cohere.');
-            }
-
-            const qBlock = {
-                question: qMatch[1].trim(),
-                options: oMatch.map((l, i) => ({
-                    text: l.replace(/^[A-D]\)\s*/, '').trim(),
-                    isCorrect: 'ABCD'[i] === aMatch[1].toUpperCase()
-                }))
-            };
-
-            localStorage.setItem(qKey, JSON.stringify(qBlock));
-            localStorage.setItem(dKey, today);
-
-            renderQuestion(qBlock);
-        } catch (err) {
-            dqBtn.textContent = '🗓️ Daily Question';
-            dqBtn.disabled = false;
-            console.error(err);
-            alert('❌ Error generating daily question – see console.');
+        const qMatch = raw.match(/^Q\)?\s*(.*)$/im);
+        const oMatch = raw.match(/^[A-D]\).*/gim);
+        const aMatch = raw.match(/Answer:\s*([A-D])/i);
+        if (!qMatch || !oMatch || oMatch.length !== 4 || !aMatch) {
+            return alert('⚠️ Could not parse question from Cohere.');
         }
-    };
 
-    /*************************************************
-     *  Attach primary button to page
-     *************************************************/
-    document.body.appendChild(mainBtn);
+        const qBlock = {
+            question: qMatch[1].trim(),
+            options: oMatch.map((l, i) => ({
+                text: l.replace(/^[A-D]\)\s*/, '').trim(),
+                isCorrect: 'ABCD'[i] === aMatch[1].toUpperCase()
+            }))
+        };
 
-})();
+        localStorage.setItem(qKey, JSON.stringify(qBlock));
+        localStorage.setItem(dKey, today);
+
+        renderQuestion(qBlock);
+    } catch (err) {
+        dqBtn.textContent = '🗓️ Daily Question';
+        dqBtn.disabled = false;
+        console.error(err);
+        alert('❌ Error generating daily question – see console.');
+    }
+};
+
+/*************************************************
+ *  Attach primary button to page
+ *************************************************/
+document.body.appendChild(mainBtn);
+
+}) ();
