@@ -41,7 +41,7 @@
 // 📘 Udemy AI Bookmarklet Tool — ARRANGED VERSION
 // (with 💡 Project Evaluator)
 // ==================================================
-(function () {
+(async function () {
     if (document.getElementById('udemyAnalyzerBtn')) return;
     if (!location.hostname.includes('udemy.com')) {
         alert('⚠️ Open this on a Udemy course page.');
@@ -173,7 +173,7 @@
         if (!window.tokenBadge) {
             window.tokenBadge = document.createElement('span');
             window.tokenBadge.style.cssText = 'display:inline-block;margin-left:6px;padding:0 8px;background:#ffd54f;color:#000;border-radius:14px;font-size:12px;font-weight:bold;vertical-align:middle;';
-            mainBtn.appendChild(window.tokenBadge);
+            memeBtn.appendChild(window.tokenBadge);
         }
         window.tokenBadge.textContent = `💰 ${tokenPoints}`;
         memeBtn.disabled = tokenPoints <= 0;
@@ -227,278 +227,370 @@
      *  🔄 MAIN BUTTON CLICK HANDLER
      *************************************************/
     mainBtn.onclick = async () => {
-        if (moved) return (moved = false);
-
-        // show panel loader
-        panel.style.display = 'flex';
-        analysisBox.innerHTML = '<b>⏳ Analyzing course…</b>';
-        modulesBox.innerHTML = '';
-
-        // gather course info
-        const url = location.href;
-        const title = document.querySelector('h1')?.innerText || 'Untitled Course';
-
-        try {
-            /***** 1️⃣ Course Analysis *****/
-            const analysisPrompt = `You are a concise educational analyst. 
-            Study the Udemy course below and reply in the EXACT markdown template that follows—no preamble or extras.
-            Course Title: ${title}
-            Course URL: ${url}
-
-            ## TEMPLATE
-            ### Modules (≤8 items) 
-            - {Module Title ≤ 8 words}: {1-sentence key skill (≤15 words)}
-            
-            ### Drawbacks (≤3 items, ≤12 words each)
-            - {Drawback 1}
-            - {Drawback 2}
-            - {Drawback 3}
-
-            ### Learning Outcomes (5 items, ≤12 words each)
-            1. {Outcome 1}
-            2. {Outcome 2}
-            3. {Outcome 3}
-            4. {Outcome 4}
-            5. {Outcome 5}
-
-            RULES  
-            • Stick to the template headings and bullet/number format.  
-            • Keep total length under 180 words.  
-            • Use plain language; avoid filler and marketing hype.  
-            • No conclusions or advice—just the facts in the template.`;
-            const analysis = await cohereQuery(analysisPrompt, 500);
-            analysisBox.innerHTML = '<b>📘 Course Analysis:</b><br><br>' + analysis.replace(/\n/g, '<br>');
-
-            /***** 2️⃣ Modules List *****/
-            const mods = [...document.querySelectorAll('div[data-purpose="curriculum-section-container"] h3')];
-            if (!mods.length) {
-                modulesBox.innerHTML = '<b>📂 Modules</b><br><br>❌ Could not detect modules.';
-            } else {
-                modulesBox.innerHTML = '<b>📂 Modules</b><br><br>';
-
-                // checklist for each module
-                mods.forEach((m, i) => {
-                    const key = 'udemyMod-' + i;
-                    const wrap = document.createElement('label');
-                    wrap.style.cssText = 'display:block;margin:4px 0;cursor:pointer;';
-                    const chk = document.createElement('input');
-                    chk.type = 'checkbox';
-                    chk.checked = localStorage.getItem(key) === '1';
-                    chk.onchange = () => localStorage.setItem(key, chk.checked ? '1' : '0');
-                    wrap.append(chk, ' ', m.innerText.trim());
-                    modulesBox.appendChild(wrap);
-                });
-
-                // action buttons
-                const btnRow = document.createElement('div');
-                btnRow.style.cssText = 'margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;';
-                modulesBox.appendChild(btnRow);
-
-                const projBtn = document.createElement('button');
-                projBtn.textContent = '🎯 Suggest Projects';
-                projBtn.style.cssText = 'padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:6px;cursor:pointer;';
-                btnRow.appendChild(projBtn);
-
-                const quizBtn = document.createElement('button');
-                quizBtn.textContent = '📝 Quiz Me';
-                quizBtn.style.cssText = 'padding:6px 12px;background:#ffc107;color:#000;border:none;border-radius:6px;cursor:pointer;';
-                btnRow.appendChild(quizBtn);
-
-                /* --- QUIZ ME ------------------------------------ */
-                let overlay = document.getElementById('udemyoverlay');
-                if (!overlay) {
-                    overlay = document.createElement('div');
-                    overlay.id = 'udemyoverlay';
-                    overlay.style.cssText =
-                        'display:none;position:fixed;top:10%;left:10%;width:80%;height:80%;background:#fffbd6;' +
-                        'border:6px solid #ff9800;border-radius:20px;z-index:10000;padding:25px;overflow:auto;' +
-                        'box-shadow:0 8px 25px rgba(0,0,0,.4);font-family:sans-serif;';
-                    document.body.appendChild(overlay);
-                }
-
-                quizBtn.onclick = async () => {
-                    const chosen = mods
-                        .filter((_, i) => localStorage.getItem('udemyMod-' + i) === '1')
-                        .map(m => m.innerText.trim());
-
-                    if (!chosen.length) return alert('Select modules first.');
-
-                    overlay.innerHTML = '<h2>📝 Generating quiz…</h2>';
-
-                    const qPrompt =
-                        `You are an advanced technical‑course quiz generator.\n` +
-                        `Generate EXACTLY 5 high‑quality MCQs based ONLY on these modules:\n` +
-                        `${chosen.join('\n')}\n\n` +
-                        `Rules:\n` +
-                        `• 2 easy, 2 medium, 1 hard\n` +
-                        `• 4 options (A–D); exactly ONE correct\n` +
-                        `• Wrap the correct option in <span class="answer"></span>\n` +
-                        `• Format strictly:\n` +
-                        `Q1. <question>\nA) <opt>\nB) <opt>\nC) <opt>\nD) <opt>\n\n` +
-                        `Begin:`;
-
-                    try {
-                        const txt = await cohereQuery(qPrompt, 650);
-                        overlay.style.display = 'block';
-                        overlay.innerHTML =
-                            '<button id="closeQuiz" style="position:absolute;top:15px;right:20px;font-size:20px;' +
-                            'background:#f44336;color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;">✖</button>' +
-                            '<h2 style="text-align:center;margin:10px 0 20px">📝 Module Quiz</h2>' +
-                            '<form id="quizForm" style="font-size:16px;line-height:1.6"></form>' +
-                            '<button id="submitQuiz" style="margin-top:25px;display:block;background:#4caf50;color:white;' +
-                            'border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-left:auto;margin-right:auto;">Show Answers</button>' +
-                            '<div id="scoreBox" style="text-align:center;font-size:18px;margin-top:15px;font-weight:bold;"></div>';
-
-                        document.getElementById('closeQuiz').onclick = () => (overlay.style.display = 'none');
-                        const form = overlay.querySelector('#quizForm');
-
-                        /* --- split Cohere output into 5 blocks --- */
-                        const blocks = txt.match(/(?:Q?\d+[.)])[\s\S]*?(?=(?:Q?\d+[.)])|$)/g) || [];
-
-                        const correctMap = [];
-                        blocks.forEach((blk, qi) => {
-                            const lines = blk.trim().split('\n').filter(Boolean);
-
-                            /* NEW — fallback for “Answer: X” format */
-                            const answerLetter = (blk.match(/Answer\s*[:\-]?\s*([A-D])/i) || [])[1]?.toUpperCase() || null;
-
-                            const qLine = lines.shift();
-                            const qDiv = document.createElement('div');
-                            qDiv.style.marginBottom = '20px';
-                            qDiv.innerHTML = `<b>${qLine.replace(/^Q?\d+[.)]\s*/, '')}</b><br><br>`;
-
-                            /* extract A‑D */
-                            const options = lines.slice(0, 4).map((line) => {
-                                const letter = line.trim().charAt(0).toUpperCase();          // A/B/C/D
-                                const isCorrect = /class=["']answer["']/.test(line) ||          // span‑tag way
-                                    (answerLetter && letter === answerLetter);     // Answer: X fallback
-                                const text = line
-                                    .replace(/<span class=["']answer["']>/, '')
-                                    .replace('</span>', '')
-                                    .replace(/^[A-Da-d][).]\s*/, '')
-                                    .trim();
-                                return { text, isCorrect };
-                            });
-
-                            /* shuffle so correct option isn’t always fixed */
-                            for (let i = options.length - 1; i > 0; i--) {
-                                const j = Math.floor(Math.random() * (i + 1));
-                                [options[i], options[j]] = [options[j], options[i]];
-                            }
-
-                            options.forEach((opt, oi) => {
-                                const id = `q${qi}o${oi}`;
-                                const radio = document.createElement('input');
-                                radio.type = 'radio';
-                                radio.name = `q${qi}`;
-                                radio.id = id;
-                                radio.dataset.correct = opt.isCorrect;
-                                const label = document.createElement('label');
-                                label.htmlFor = id;
-                                label.style.cssText =
-                                    'display:block;margin:6px 0;padding:6px 10px;border-radius:5px;' +
-                                    'cursor:pointer;border:1px solid #ccc;';
-                                label.appendChild(radio);
-                                label.appendChild(document.createTextNode(' ' + opt.text));
-                                qDiv.appendChild(label);
-                                if (opt.isCorrect) correctMap[qi] = label;
-                            });
-                            form.appendChild(qDiv);
-                        });
-
-                        overlay.querySelector('#submitQuiz').onclick = () => {
-                            let right = 0;
-                            correctMap.forEach((correctLabel, qi) => {
-                                const chosen = form.querySelector(`input[name="q${qi}"]:checked`);
-                                if (chosen) {
-                                    const chosenLabel = form.querySelector(`label[for="${chosen.id}"]`);
-                                    if (chosen.dataset.correct === 'true') {
-                                        chosenLabel.style.background = '#c8e6c9';
-                                        right++;
-                                    } else {
-                                        chosenLabel.style.background = '#ffcdd2';
-                                        correctLabel.style.background = '#e0f2f1';
-                                    }
-                                } else {
-                                    correctLabel.style.background = '#e0f2f1';
-                                }
-                            });
-                            const pct = Math.round((right / correctMap.length) * 100);
-                            addTokens(right);
-                            overlay.querySelector('#scoreBox').textContent =
-                                `🎯 You scored ${right}/${correctMap.length} (${pct}%)`;
-                        };
-                    } catch (err) {
-                        overlay.innerHTML =
-                            '<p style="color:red;text-align:center">❌ Failed to generate quiz.</p>';
-                        console.error(err);
-                    }
-                };
-
-                /* --- Project Suggestions --- */
-                const ideasDiv = document.createElement('div');
-                ideasDiv.style.cssText = 'margin-top:12px;white-space:pre-wrap;';
-                modulesBox.appendChild(ideasDiv);
-
-                projBtn.onclick = async () => {
-                    const selected = mods.filter((_, i) => localStorage.getItem('udemyMod-' + i) === '1').map(m => m.innerText.trim());
-                    if (!selected.length) return alert('Select modules first.');
-                    ideasDiv.innerHTML = '<b>⏳ Fetching ideas…</b>';
-                    const txt = await cohereQuery(`I completed these modules:\n\n${selected.join('\n')}\n\nSuggest three hands‑on project ideas.`, 350);
-                    ideasDiv.innerHTML = '<b>🚀 Project Ideas:</b><br>' + txt.replace(/\n/g, '<br>');
-                };
-
-                /* --- Quiz Me --- */ /* (unchanged – code omitted for brevity) */
-                /* -------- END OF ORIGINAL MODULE SECTION -------- */
-
-                /*************************************************
-                 *  💡 PROJECT EVALUATOR  🔽  (NEW)
-                 *************************************************/
-                const ghInput = document.createElement('input');
-                ghInput.type = 'text';
-                ghInput.placeholder = 'Paste your GitHub project link...';
-                ghInput.style.cssText =
-                    'margin-top:18px;width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;';
-                evalResult.appendChild(ghInput);
-
-                const evalBtn = document.createElement('button');
-                evalBtn.textContent = '🧠 Evaluate Project';
-                evalBtn.style.cssText =
-                    'margin-top:10px;padding:6px 12px;border:none;background:#9c27b0;color:white;border-radius:4px;cursor:pointer;';
-                evalResult.appendChild(evalBtn);
-
-                evalBtn.onclick = async () => {
-                    const link = ghInput.value.trim();
-                    if (!link.startsWith('https://github.com/')) {
-                        alert('❌ Please enter a valid GitHub repository link.');
-                        return;
-                    }
-                    evalResult.innerHTML = '🔍 Evaluating project… please wait...';
-
-                    const evalPrompt =
-                        `You are a software quality expert. A student submitted this GitHub project for review:\n\n${link}\n\n` +
-                        `Carefully analyze the repo based on common criteria like:\n` +
-                        `- Code structure and readability\n- Proper documentation and README\n- Modularity and best practices\n- Use of version control (commits, branches)\n- Innovation or uniqueness\n\n` +
-                        `Give constructive suggestions to improve.\nThen rate the project on a scale of 1 to 10 and justify the rating.\n\n` +
-                        `Respond in this format:\n---\nSuggestions:\n<your suggestions>\n\nRating: <score>/10\n---`;
-
-                    try {
-                        const feedback = await cohereQuery(evalPrompt, 500);
-                        evalResult.innerHTML = '✅ <b>Evaluation:</b><br><br>' + feedback.replace(/\n/g, '<br>');
-                    } catch (err) {
-                        evalResult.innerHTML =
-                            '<span style="color:red">❌ Error evaluating project – see console.</span>';
-                        console.error(err);
-                    }
-                };
-                /*************** END PROJECT EVALUATOR ***************/
-            }
-        } catch (err) {
-            analysisBox.innerHTML = '<span style="color:red">❌ Error – see console.</span>';
-            console.error(err);
-        }
+        if (moved) return (moved = false);  // preserve drag logic
+        panel.style.display = (panel.style.display === 'none' || !panel.style.display) ? 'flex' : 'none';
     };
 
+
+    // show panel loader
+    panel.style.display = 'flex';
+    analysisBox.innerHTML = '<b>⏳ Analyzing course…</b>';
+    modulesBox.innerHTML = '';
+
+    // gather course info
+    const url = location.href;
+    const title = document.querySelector('h1')?.innerText || 'Untitled Course';
+
+    try {
+        /***** 1️⃣ Course Analysis *****/
+        const analysisPrompt = `You are an expert educational analyst.
+Study the Udemy course below and reply in the EXACT template that follows—no preamble or extras.
+Course Title: ${title}
+Course URL: ${url}
+
+TEMPLATE
+Modules (up to 8)
+- Module Title: Key skill or topic (1 sentence, max 15 words)
+
+Drawbacks (up to 3, max 12 words each)
+- Drawback 1
+- Drawback 2
+- Drawback 3
+
+Learning Outcomes (5, max 12 words each)
+1. Outcome 1
+2. Outcome 2
+3. Outcome 3
+4. Outcome 4
+5. Outcome 5
+
+In-depth Details
+- Provide a concise but thorough summary of the course content, structure, teaching approach, and any unique features. Use only information visible on the course page. Do not add conclusions or advice. Do not use any symbols like # or * in your response. Use plain text only. Keep the total response under 220 words. Ensure the text is well-aligned and easy to read.
+`;
+
+        const analysis = await cohereQuery(analysisPrompt, 650);
+        // Custom styled box with equal margin and no markdown symbols
+        analysisBox.innerHTML = `
+    <div style="
+        margin: 0 auto;
+        max-width: 95%;
+        background: #f8f9fa;
+        padding: 22px 32px 22px 32px;
+        border-radius: 12px;
+        border: 1px solid #e0e0e0;
+        box-sizing: border-box;
+        text-align: justify;
+        font-family: inherit;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #222;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    ">
+        <div style="
+            width: 100%;
+            max-width: 700px;
+            margin: 0 auto;
+            text-align: justify;
+            word-break: break-word;
+        ">
+            <div style="font-weight:bold;text-align:center;margin-bottom:18px;">Course Analysis</div>
+            ${analysis.replace(/[#*]/g, '').replace(/\n/g, '<br>')}
+        </div>
+    </div>
+`;
+        /***** 2️⃣ Modules List *****/
+        const mods = [...document.querySelectorAll('div[data-purpose="curriculum-section-container"] h3')];
+        if (!mods.length) {
+            modulesBox.innerHTML = '<b>📂 Modules</b><br><br>❌ Could not detect modules.';
+        } else {
+            modulesBox.innerHTML = '<b>📂 Modules</b><br><br>';
+
+            // checklist for each module
+            mods.forEach((m, i) => {
+                const key = 'udemyMod-' + i;
+                const wrap = document.createElement('label');
+                wrap.style.cssText = 'display:block;margin:4px 0;cursor:pointer;';
+                const chk = document.createElement('input');
+                chk.type = 'checkbox';
+                chk.checked = localStorage.getItem(key) === '1';
+                chk.onchange = () => localStorage.setItem(key, chk.checked ? '1' : '0');
+                wrap.append(chk, ' ', m.innerText.trim());
+                modulesBox.appendChild(wrap);
+            });
+
+            // action buttons
+            const btnRow = document.createElement('div');
+            btnRow.style.cssText = 'margin-top:10px;display:flex;gap:10px;flex-wrap:wrap;';
+            modulesBox.appendChild(btnRow);
+
+            const projBtn = document.createElement('button');
+            projBtn.textContent = '🎯 Suggest Projects';
+            projBtn.style.cssText = 'padding:6px 12px;background:#28a745;color:#fff;border:none;border-radius:6px;cursor:pointer;';
+            btnRow.appendChild(projBtn);
+
+            const quizBtn = document.createElement('button');
+            quizBtn.textContent = '📝 Quiz Me';
+            quizBtn.style.cssText = 'padding:6px 12px;background:#ffc107;color:#000;border:none;border-radius:6px;cursor:pointer;';
+            btnRow.appendChild(quizBtn);
+
+            /* --- QUIZ ME ------------------------------------ */
+            let overlay = document.getElementById('udemyoverlay');
+            if (!overlay) {
+                overlay = document.createElement('div');
+                overlay.id = 'udemyoverlay';
+                overlay.style.cssText =
+                    'display:none;position:fixed;top:10%;left:10%;width:80%;height:80%;background:#fffbd6;' +
+                    'border:6px solid #ff9800;border-radius:20px;z-index:10000;padding:25px;overflow:auto;' +
+                    'box-shadow:0 8px 25px rgba(0,0,0,.4);font-family:sans-serif;';
+                document.body.appendChild(overlay);
+            }
+
+            quizBtn.onclick = async () => {
+                const chosen = mods
+                    .filter((_, i) => localStorage.getItem('udemyMod-' + i) === '1')
+                    .map(m => m.innerText.trim());
+
+                if (!chosen.length) return alert('Select modules first.');
+
+                overlay.innerHTML = '<h2>📝 Generating quiz…</h2>';
+
+                const qPrompt =
+                    `You are an advanced technical‑course quiz generator.\n` +
+                    `Generate EXACTLY 5 high‑quality MCQs based ONLY on these modules:\n` +
+                    `${chosen.join('\n')}\n\n` +
+                    `Rules:\n` +
+                    `• 2 easy, 2 medium, 1 hard\n` +
+                    `• 4 options (A–D); exactly ONE correct\n` +
+                    `• Wrap the correct option in <span class="answer"></span>\n` +
+                    `• Format strictly:\n` +
+                    `Q1. <question>\nA) <opt>\nB) <opt>\nC) <opt>\nD) <opt>\n\n` +
+                    `Begin:`;
+
+                try {
+                    const txt = await cohereQuery(qPrompt, 650);
+                    overlay.style.display = 'block';
+                    overlay.innerHTML =
+                        '<button id="closeQuiz" style="position:absolute;top:15px;right:20px;font-size:20px;' +
+                        'background:#f44336;color:white;border:none;border-radius:4px;padding:4px 12px;cursor:pointer;">✖</button>' +
+                        '<h2 style="text-align:center;margin:10px 0 20px">📝 Module Quiz</h2>' +
+                        '<form id="quizForm" style="font-size:16px;line-height:1.6"></form>' +
+                        '<button id="submitQuiz" style="margin-top:25px;display:block;background:#4caf50;color:white;' +
+                        'border:none;padding:10px 20px;border-radius:6px;cursor:pointer;margin-left:auto;margin-right:auto;">Show Answers</button>' +
+                        '<div id="scoreBox" style="text-align:center;font-size:18px;margin-top:15px;font-weight:bold;"></div>';
+
+                    document.getElementById('closeQuiz').onclick = () => (overlay.style.display = 'none');
+                    const form = overlay.querySelector('#quizForm');
+
+                    /* --- split Cohere output into 5 blocks --- */
+                    const blocks = txt.match(/(?:Q?\d+[.)])[\s\S]*?(?=(?:Q?\d+[.)])|$)/g) || [];
+
+                    const correctMap = [];
+                    blocks.forEach((blk, qi) => {
+                        const lines = blk.trim().split('\n').filter(Boolean);
+
+                        /* NEW — fallback for “Answer: X” format */
+                        const answerLetter = (blk.match(/Answer\s*[:\-]?\s*([A-D])/i) || [])[1]?.toUpperCase() || null;
+
+                        const qLine = lines.shift();
+                        const qDiv = document.createElement('div');
+                        qDiv.style.marginBottom = '20px';
+                        qDiv.innerHTML = `<b>${qLine.replace(/^Q?\d+[.)]\s*/, '')}</b><br><br>`;
+
+                        /* extract A‑D */
+                        const options = lines.slice(0, 4).map((line) => {
+                            const letter = line.trim().charAt(0).toUpperCase();          // A/B/C/D
+                            const isCorrect = /class=["']answer["']/.test(line) ||          // span‑tag way
+                                (answerLetter && letter === answerLetter);     // Answer: X fallback
+                            const text = line
+                                .replace(/<span class=["']answer["']>/, '')
+                                .replace('</span>', '')
+                                .replace(/^[A-Da-d][).]\s*/, '')
+                                .trim();
+                            return { text, isCorrect };
+                        });
+
+                        /* shuffle so correct option isn’t always fixed */
+                        for (let i = options.length - 1; i > 0; i--) {
+                            const j = Math.floor(Math.random() * (i + 1));
+                            [options[i], options[j]] = [options[j], options[i]];
+                        }
+
+                        options.forEach((opt, oi) => {
+                            const id = `q${qi}o${oi}`;
+                            const radio = document.createElement('input');
+                            radio.type = 'radio';
+                            radio.name = `q${qi}`;
+                            radio.id = id;
+                            radio.dataset.correct = opt.isCorrect;
+                            const label = document.createElement('label');
+                            label.htmlFor = id;
+                            label.style.cssText =
+                                'display:block;margin:6px 0;padding:6px 10px;border-radius:5px;' +
+                                'cursor:pointer;border:1px solid #ccc;';
+                            label.appendChild(radio);
+                            label.appendChild(document.createTextNode(' ' + opt.text));
+                            qDiv.appendChild(label);
+                            if (opt.isCorrect) correctMap[qi] = label;
+                        });
+                        form.appendChild(qDiv);
+                    });
+
+                    overlay.querySelector('#submitQuiz').onclick = () => {
+                        let right = 0;
+                        correctMap.forEach((correctLabel, qi) => {
+                            const chosen = form.querySelector(`input[name="q${qi}"]:checked`);
+                            if (chosen) {
+                                const chosenLabel = form.querySelector(`label[for="${chosen.id}"]`);
+                                if (chosen.dataset.correct === 'true') {
+                                    chosenLabel.style.background = '#c8e6c9';
+                                    right++;
+                                } else {
+                                    chosenLabel.style.background = '#ffcdd2';
+                                    correctLabel.style.background = '#e0f2f1';
+                                }
+                            } else {
+                                correctLabel.style.background = '#e0f2f1';
+                            }
+                        });
+                        const pct = Math.round((right / correctMap.length) * 100);
+                        addTokens(right);
+                        overlay.querySelector('#scoreBox').textContent =
+                            `🎯 You scored ${right}/${correctMap.length} (${pct}%)`;
+                    };
+                } catch (err) {
+                    overlay.innerHTML =
+                        '<p style="color:red;text-align:center">❌ Failed to generate quiz.</p>';
+                    console.error(err);
+                }
+            };
+
+            /* --- Project Suggestions --- */
+            const ideasDiv = document.createElement('div');
+            ideasDiv.style.cssText = 'margin-top:12px;white-space:pre-wrap;';
+            modulesBox.appendChild(ideasDiv);
+
+            projBtn.onclick = async () => {
+                const selected = mods.filter((_, i) => localStorage.getItem('udemyMod-' + i) === '1').map(m => m.innerText.trim());
+                if (!selected.length) return alert('Select modules first.');
+                ideasDiv.innerHTML = '<b>⏳ Fetching ideas…</b>';
+                const projPrompt = `
+You are an expert project mentor.
+Given these course modules:
+${selected.join('\n')}
+
+Suggest exactly five hands-on project ideas that directly apply the skills or concepts from these modules.
+For each project, provide:
+- A clear project title (max 10 words, no symbols)
+- A concise description (max 25 words, plain text, no # or *)
+
+Guidelines:
+• Only use information from the listed modules.
+• Do not add extra commentary or sections.
+• Use plain, clear language.
+• Keep the total response under 180 words.
+• Do not use any markdown or special symbols.
+
+Format strictly:
+1. <Project Title>: <Description>
+2. <Project Title>: <Description>
+3. <Project Title>: <Description>
+4. <Project Title>: <Description>
+5. <Project Title>: <Description>
+`.trim();
+
+                const txt = await cohereQuery(projPrompt, 400);
+                ideasDiv.innerHTML = `
+    <div style="
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 95%;
+        background: #f8f9fa;
+        padding: 18px 32px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        box-sizing: border-box;
+        font-family: inherit;
+        font-size: 15px;
+        line-height: 1.7;
+        color: #222;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    ">
+        <b style="display:block;text-align:center;font-size:18px;margin-bottom:12px;">🚀 Project Ideas:</b>
+        <div style="width:100%;max-width:500px;text-align:left;">
+            ${txt
+                        .replace(/[#*]/g, '')
+                        .replace(/\n{2,}/g, '\n') // Remove extra blank lines
+                        .split(/\n+/)
+                        .map(line => line.trim())
+                        .filter(line => line)
+                        .map(line => {
+                            const match = line.match(/^(\d+\.\s*)([^:]+):\s*(.*)$/);
+                            if (match) {
+                                const [_, number, title, desc] = match;
+                                return `<div style="margin-bottom:10px;"><b>${number}${title}</b>: ${desc}</div>`;
+                            }
+                            return `<div style="margin-bottom:10px;">${line}</div>`;
+                        })
+                        .join('')}
+        </div>
+    </div>
+`;
+
+            };
+
+            /* --- Quiz Me --- */ /* (unchanged – code omitted for brevity) */
+            /* -------- END OF ORIGINAL MODULE SECTION -------- */
+
+            /*************************************************
+             *  💡 PROJECT EVALUATOR  🔽  (NEW)
+             *************************************************/
+            const ghInput = document.createElement('input');
+            ghInput.type = 'text';
+            ghInput.placeholder = 'Paste your GitHub project link...';
+            ghInput.style.cssText =
+                'margin-top:18px;width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;';
+            evalResult.appendChild(ghInput);
+
+            const evalBtn = document.createElement('button');
+            evalBtn.textContent = '🧠 Evaluate Project';
+            evalBtn.style.cssText =
+                'margin-top:10px;padding:6px 12px;border:none;background:#9c27b0;color:white;border-radius:4px;cursor:pointer;';
+            evalResult.appendChild(evalBtn);
+
+            evalBtn.onclick = async () => {
+                const link = ghInput.value.trim();
+                if (!link.startsWith('https://github.com/')) {
+                    alert('❌ Please enter a valid GitHub repository link.');
+                    return;
+                }
+                evalResult.innerHTML = '🔍 Evaluating project… please wait...';
+
+                const evalPrompt =
+                    `You are a software quality expert. A student submitted this GitHub project for review:\n\n${link}\n\n` +
+                    `Carefully analyze the repo based on common criteria like:\n` +
+                    `- Code structure and readability\n- Proper documentation and README\n- Modularity and best practices\n- Use of version control (commits, branches)\n- Innovation or uniqueness\n\n` +
+                    `Give constructive suggestions to improve.\nThen rate the project on a scale of 1 to 10 and justify the rating.\n\n` +
+                    `Respond in this format:\n---\nSuggestions:\n<your suggestions>\n\nRating: <score>/10\n---`;
+
+                try {
+                    const feedback = await cohereQuery(evalPrompt, 500);
+                    evalResult.innerHTML = '✅ <b>Evaluation:</b><br><br>' + feedback.replace(/\n/g, '<br>');
+                } catch (err) {
+                    evalResult.innerHTML =
+                        '<span style="color:red">❌ Error evaluating project – see console.</span>';
+                    console.error(err);
+                }
+            };
+            /*************** END PROJECT EVALUATOR ***************/
+        }
+    } catch (err) {
+        analysisBox.innerHTML = '<span style="color:red">❌ Error – see console.</span>';
+        console.error(err);
+    }
     /*************************************************
      *  💬 ASK ANYTHING
      *************************************************/
@@ -553,6 +645,7 @@
         } finally {
             memeBtn.textContent = '🎭';
             memeBtn.disabled = false;
+            memeBtn.appendChild(window.tokenBadge);
         }
     };
 
