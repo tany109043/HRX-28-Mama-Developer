@@ -31,7 +31,7 @@
 3. **Start the sentiment‑analysis backend** (Python ≥ 3.9):
 
    ```bash
-   uvicorn api:app --reload --port 8000
+   uvicorn api:app --host 0.0.0.0 --port 8000
    ```
 
    This exposes `/start`, `/stop` and `/latest` endpoints that the bookmarklet polls.
