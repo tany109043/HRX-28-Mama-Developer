@@ -26,13 +26,13 @@
 2. **Start the sentiment‑analysis backend** (Python ≥ 3.9):
 
    ```bash
-   uvicorn student_affect_monitor:app --reload --port 8000
+   uvicorn api:app --host 0.0.0.0 --port 8000
    ```
 
    This exposes `/start`, `/stop` and `/latest` endpoints that the bookmarklet polls.
 3. **Create the bookmarklet**
 
-   * Add a new bookmark in your browser.
+   * Add a new bookmark in your browser. (Click on Add Page)
    * Set its *URL / Location* to **one long line**:
 
      ```javascript
