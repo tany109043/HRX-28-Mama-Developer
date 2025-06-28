@@ -73,30 +73,6 @@
 
 ---
 
-## 📦 Requirements (for backend)
-
-Create a `requirements.txt` with the following:
-
-```
-fastapi
-uvicorn
-python-multipart
-pynput
-opencv-python
-mediapipe
-deepface
-scipy
-tk
-```
-
-Install all dependencies with:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
 ## 🤝 Contributing
 
 1. Fork → feature branch → commit with conventional messages.
