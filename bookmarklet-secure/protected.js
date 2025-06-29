@@ -357,8 +357,10 @@
     const mini = document.createElement('div');
     mini.style.cssText = [
         'display:none',
-        'position:absolute',                 // absolute for dynamic positioning
-        'width:260px',
+        'position:fixed',                 // fixed for screen positioning
+        'top:20px',                       // distance from top
+        'right:20px',                     // distance from right
+        'width:200px',
         'padding:12px',
         'background:#fff',
         'border:2px solid #888',
