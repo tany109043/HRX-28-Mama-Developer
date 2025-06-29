@@ -1,98 +1,131 @@
-# HRX‑28 Mama Developer — Learning Companion Bookmarklet
+# HRX‑28 Mama Developer — Learning‑Companion Bookmarklet
 
-> A single‑click bookmarklet that injects AI‑powered study aides, mood tracking, quizzes and fun incentives directly onto any Udemy course page.<br>
-**Note:-** Currently working on Udemy Courses Only.
+*A one‑click bookmarklet that overlays AI study tools, webcam mood tracking, and gamified rewards onto Udemy courses.*
+
+> ⚠️ Note: Only `verifier.js` is public in this GitHub repo.  
+> Full logic and backend code are stored locally in two folders:
+> - `bookmarklet-secure/` (access logic + frontend UI)
+> - `sentiment-analysis/` (Python backend for affect detection)
+
 ---
 
 ## ✨ Features
 
-| Category              | What it does                                                                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| **Sentiment Monitor** | Real‑time webcam‑based affect detection via a FastAPI backend; console table updates every second and pauses with <kbd>Esc</kbd>. |
-| **Course Analyzer**   | Uses Cohere Llama to summarise modules, highlight drawbacks and outline learning outcomes in <180 words.                          |
-| **Module Checklist**  | Auto‑detects section titles; tick completed items and persist progress in `localStorage`.                                         |
-| **Project Ideas**     | Generates three DIY projects tailored to your selected modules.                                                                   |
-| **Quiz Me**           | Builds 5 MCQs (2 easy / 2 medium / 1 hard) for chosen modules, auto‑grades and awards **tokens**.                                 |
-| **Daily Question**    | One timed logical/quantitative aptitude MCQ per day; +10 tokens on a correct answer.                                              |
-| **Meme Generator**    | Spend 1 token to unlock a fresh Imgflip meme with AI‑written captions on the course topic.                                        |
-| **GitHub Evaluator**  | Paste a repo URL and receive constructive feedback plus a 1‑10 rating.                                                            |
-| **Gamification**      | Earn tokens via quizzes & daily question, spend them on memes; token badge always visible.                                        |
+| Category              | What It Does |
+| --------------------- | ------------ |
+| Sentiment Monitor     | Live webcam mood detection using DeepFace & MediaPipe, polled every second. |
+| Course Analyzer       | Uses Cohere to summarize modules, drawbacks, and outcomes in ≤180 words. |
+| Module Checklist      | Auto-detects section titles; check off and track progress via `localStorage`. |
+| Project Ideas         | Suggests 3 DIY projects based on selected modules. |
+| Quiz Me               | Auto-generates 5 MCQs (2 Easy, 2 Medium, 1 Hard) with scoring and tokens. |
+| Daily Question        | One logical or aptitude MCQ daily; +10 tokens if answered correctly. |
+| Meme Generator        | Spend 1 token to unlock a meme via Imgflip with AI-generated caption. |
+| GitHub Evaluator      | Enter repo URL to get rating and improvement suggestions. |
+| Gamification          | Earn tokens, spend them on memes, track via floating badge. |
 
 ---
 
-## 🔧 Quick Start
+## 🧩 How It Works
 
-1. **Clone or download** this repo (or simply reference the hosted file on jsDelivr).
-2. **Install dependencies** for sentiment detection backend:
+Browser Bookmarklet  
+↓  
+Loads verifier.js (from GitHub via jsDelivr)  
+↓  
+Prompts email → sends to http://localhost:3000/check-access  
+→ If rejected: blocks load  
+→ If approved: injects protected.js (full UI + features)
 
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. **Start the sentiment‑analysis backend** (Python ≥ 3.9):
+### Local Services:
 
-   ```bash
-   uvicorn api:app --host 0.0.0.0 --port 8000
-   ```
-
-   This exposes `/start`, `/stop` and `/latest` endpoints that the bookmarklet polls.
-4. **Create the bookmarklet**
-
-   * Add a new bookmark in your browser.
-   * Set its *URL / Location* to **one long line**:
-
-     ```javascript
-     javascript:(async()=>{await import('https://cdn.jsdelivr.net/gh/tany109043/HRX-28-Mama-Developer@main/verifier.js?t=' + Date.now()); await window.startCheck();})();
-     ```
-   * Give it a name like **Udemy Buddy** and save.
-5. **Open any Udemy course** page, click the floating green ⬤ button (bottom‑right) and explore the panel.
+- `bookmarklet-secure/`
+  - `server.js` – Node.js Express email approval server
+  - `protected.js` – Full front-end logic (kept private)
+- `sentiment-analysis/`
+  - `api.py`, `student_affect_monitor.py`, `requirements.txt` – Python-based webcam sentiment tracker
 
 ---
 
-## 🗝️ Configuration
+## 🚀 Quick Start
 
-| Setting                     | Where                        | Default                 | Notes                                              |
-| --------------------------- | ---------------------------- | ----------------------- | -------------------------------------------------- |
-| Cohere API Key              | `script.js` → `const apiKey` | Demo key                | Replace with your own key from Cohere dashboard.   |
-| Imgflip Username / Password | `script.js` (Meme section)   | Sample creds            | Use personal Imgflip account to avoid rate limits. |
-| Sentiment API Base URL      | Top of `script.js`           | `http://localhost:8000` | Change if backend is hosted elsewhere.             |
+### 1. Access Control Server (Node.js)
 
-> **Security tip:** never commit real credentials to a public repo. Consider loading keys from `localStorage` or a server‑side endpoint.
+    cd bookmarklet-secure
+    npm install
+    node server.js
 
----
+- Runs at: http://localhost:3000  
+- Admin panel: http://localhost:3000/admin
 
-## 📂 Project Structure
+### 2. Sentiment Analysis API (Python ≥ 3.9)
 
-```
-├─ script.js                 # main bookmarklet payload (loads dynamically)
-├─ api.py                   # FastAPI backend to manage sentiment process
-├─ student_affect_monitor.py# Emotion detection using DeepFace and MediaPipe
-├─ requirements.txt         # Python dependencies
-├─ README.md                # this file
-└─ …
-```
+    cd sentiment-analysis
+    pip install -r requirements.txt
+    uvicorn api:app --host 0.0.0.0 --port 8000
 
----
+### 3. Create the Bookmarklet
 
-## 🤝 Contributing
+Add a new browser bookmark and set the URL to:
 
-1. Fork → feature branch → commit with conventional messages.
-2. Add/adjust tests if you touch logic.
-3. Open a Pull Request describing **what** you changed & **why**.
-
-Bug reports & feature ideas are welcome via Issues.
+    javascript:(async()=>{await import('https://cdn.jsdelivr.net/gh/tany109043/HRX-28-Mama-Developer@main/verifier.js?t='+Date.now())})();
 
 ---
 
-## 📝 License
+## 🧪 How to Use
 
-Released under the **MIT License** © 2025 Shantnu Talokar.
+1. Open a Udemy course page.
+2. Click the bookmarklet.
+3. Enter your email.
+4. Approve it in the admin panel.
+5. Enjoy the assistant features injected on the page.
+
+---
+
+## ⚙️ Configuration
+
+| Setting                     | File            | Default                | Notes |
+|----------------------------|-----------------|------------------------|-------|
+| Cohere API Key              | protected.js    | demo key               | Replace with real key |
+| Imgflip Username / Password | protected.js    | sample credentials     | Avoid rate limits |
+| Sentiment API Base URL      | protected.js    | http://localhost:8000  | Update if hosted |
+| Access Control Port         | server.js       | 3000                   | Change if needed |
+
+---
+
+## 📁 Folder Structure
+
+    📁 HRX-28-Mama-Developer/
+    ├── verifier.js              # Public bookmarklet loader
+    ├── bookmarklet-secure/
+    │   ├── server.js            # Email gatekeeping
+    │   └── protected.js         # All core functionality
+    ├── sentiment-analysis/
+    │   ├── api.py
+    │   ├── student_affect_monitor.py
+    │   └── requirements.txt
+    └── README.md
+
+---
+
+## 🧑‍💻 Contributing
+
+1. Fork the repo
+2. Make a feature branch
+3. Follow conventional commits
+4. Open a pull request
+
+---
+
+## 📄 License
+
+MIT License © 2025 Shantnu Talokar
 
 ---
 
 ## 🙏 Acknowledgements
 
-* [Cohere](https://cohere.ai) for text generation APIs
-* [Imgflip](https://imgflip.com/api) for free meme templates
-* Open‑source `student_affect_monitor` for the base affect model
+- Cohere (https://cohere.ai)
+- Imgflip (https://imgflip.com/api)
+- DeepFace
+- MediaPipe
 
-> Made with ☕, 👩‍💻 and a little 🤪 to keep learning fun!
+> Built with 💻, ☕, and a little 🤯 to keep learning awesome.
