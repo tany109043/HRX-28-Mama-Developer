@@ -298,7 +298,7 @@
     /*************************************************
      *  🛠️ COHERE HELPER
      *************************************************/
-    const apiKey = 'zXH8KUSA3ncfZcxvIAZx5boAlGlTirN6LJmp706Q';
+    const apiKey = 'XhLvmWU0xamB9rrSxqYiV5dleRnCZLdKdRgU0sgI';
     const endpoint = 'https://api.cohere.ai/v1/generate';
     const cohereQuery = async (prompt, max = 400, temp = 0.7) => {
         const res = await fetch(endpoint, {
@@ -1404,7 +1404,7 @@ Only output the JSON — no extra text.
         const resp = await fetch("https://api.cohere.ai/v1/generate", {
             method: "POST",
             headers: {
-                "Authorization": "Bearer zXH8KUSA3ncfZcxvIAZx5boAlGlTirN6LJmp706Q",
+                "Authorization": "Bearer XhLvmWU0xamB9rrSxqYiV5dleRnCZLdKdRgU0sgI",
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({ model: "command", prompt, max_tokens: 100, temperature: 0.9 })
