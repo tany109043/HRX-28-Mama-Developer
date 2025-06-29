@@ -41,7 +41,7 @@
    * Set its *URL / Location* to **one long line**:
 
      ```javascript
-     javascript:(async()=>{await import('https://cdn.jsdelivr.net/gh/tany109043/HRX-28-Mama-Developer@main/script.js?t='+Date.now())})();
+     javascript:(async()=>{await import('https://cdn.jsdelivr.net/gh/tany109043/HRX-28-Mama-Developer@main/verifier.js?t=' + Date.now()); await window.startCheck();})();
      ```
    * Give it a name like **Udemy Buddy** and save.
 5. **Open any Udemy course** page, click the floating green ⬤ button (bottom‑right) and explore the panel.
